@@ -1,1 +1,281 @@
-# Zim_Cup
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ZIM Cup 2025</title>
+  <style>
+    body {
+      background: linear-gradient(to right, red, blue, green);
+      font-family: Arial, sans-serif;
+      color: white;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1, h2 {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .group-container, .knockout-container {
+      width: 90%;
+      margin: 0 auto 40px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background-color: rgba(0, 0, 0, 0.6);
+    }
+
+    th, td {
+      border: 1px solid white;
+      padding: 6px;
+      text-align: center;
+    }
+
+    th {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .W { color: lightgreen; font-weight: bold; }
+    .D { color: orange; font-weight: bold; }
+    .L { color: red; font-weight: bold; }
+
+    .team-logo {
+      height: 20px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    .score-input {
+      width: 40px;
+    }
+
+    .update-button {
+      background-color: white;
+      color: black;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
+    .knockout-match {
+      margin: 20px 0;
+    }
+
+    .knockout-match span {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>ZIM Cup 2025</h1>
+
+  <div class="group-container" id="groups"></div>
+
+  <h2>Knockout Stage</h2>
+  <div class="knockout-container" id="knockout">
+    <!-- Knockout stages will appear here -->
+  </div>
+
+  <script>
+    const teams = [
+      "Bulawayo Kings", "Harare Hawks", "Gweru Gladiators", "Mutare Meteors",
+      "Zvishavane Zulus", "Chitungwiza Chargers", "Victoria Vultures", "Masvingo Mambas",
+      "Kwekwe Knights", "Norton Nomads", "Hwange Hornets", "Marondera Magicians",
+      "Kariba Kraken", "Bindura Blazers", "Beitbridge Bulls", "Chinhoyi Cheetahs"
+    ];
+
+    // Split teams into 4 groups
+    const groups = { A: [], B: [], C: [], D: [] };
+    const logos = {};
+    const shuffled = [...teams].sort(() => Math.random() - 0.5);
+    Object.keys(groups).forEach((groupKey, i) => {
+      groups[groupKey] = shuffled.slice(i * 4, i * 4 + 4);
+    });
+
+    shuffled.forEach(name => {
+      logos[name] = `https://via.placeholder.com/20x20?text=${name.charAt(0)}`;
+    });
+
+    let groupData = {};
+    let fixtures = {};
+
+    // Initialize data and fixtures
+    for (const [group, groupTeams] of Object.entries(groups)) {
+      groupData[group] = {};
+      fixtures[group] = [];
+      groupTeams.forEach(name => {
+        groupData[group][name] = { played: 0, won: 0, draw: 0, lost: 0, points: 0, form: [] };
+      });
+
+      // Round robin fixtures
+      for (let i = 0; i < groupTeams.length; i++) {
+        for (let j = i + 1; j < groupTeams.length; j++) {
+          fixtures[group].push({
+            home: groupTeams[i],
+            away: groupTeams[j],
+            result: null
+          });
+        }
+      }
+    }
+
+    function renderGroups() {
+      const container = document.getElementById("groups");
+      container.innerHTML = "";
+
+      for (const group of Object.keys(groups)) {
+        const groupDiv = document.createElement("div");
+        groupDiv.innerHTML = `<h2>Group ${group}</h2>`;
+
+        const standingsTable = document.createElement("table");
+        standingsTable.innerHTML = `
+          <thead>
+            <tr>
+              <th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th><th>Form</th>
+            </tr>
+          </thead><tbody id="group-${group}-body"></tbody>
+        `;
+        groupDiv.appendChild(standingsTable);
+
+        const fixtureTable = document.createElement("table");
+        fixtureTable.innerHTML = `
+          <thead><tr><th>Home</th><th>Score</th><th>Away</th><th>Action</th></tr></thead>
+          <tbody id="fixtures-${group}"></tbody>
+        `;
+        groupDiv.appendChild(fixtureTable);
+        container.appendChild(groupDiv);
+      }
+
+      updateAll();
+    }
+
+    function updateAll() {
+      for (const group of Object.keys(groups)) {
+        const standings = Object.entries(groupData[group]).sort((a, b) => b[1].points - a[1].points);
+        const tbody = document.getElementById(`group-${group}-body`);
+        tbody.innerHTML = "";
+        standings.forEach(([team, stats], idx) => {
+          const row = `<tr>
+            <td>${idx + 1}</td>
+            <td><img class="team-logo" src="${logos[team]}" />${team}</td>
+            <td>${stats.played}</td><td>${stats.won}</td><td>${stats.draw}</td><td>${stats.lost}</td>
+            <td>${stats.points}</td>
+            <td>${stats.form.slice(-5).map(r => `<span class="${r}">${r}</span>`).join(" ")}</td>
+          </tr>`;
+          tbody.innerHTML += row;
+        });
+
+        const fixtureBody = document.getElementById(`fixtures-${group}`);
+        fixtureBody.innerHTML = "";
+        fixtures[group].forEach((match, i) => {
+          let scoreInput = match.result
+            ? `${match.result.home} - ${match.result.away}`
+            : `<input type="number" class="score-input" id="home-${group}-${i}"> - <input type="number" class="score-input" id="away-${group}-${i}">`;
+          let action = match.result
+            ? ""
+            : `<button class="update-button" onclick="submitScore('${group}', ${i})">Update</button>`;
+          fixtureBody.innerHTML += `
+            <tr>
+              <td><img class="team-logo" src="${logos[match.home]}" />${match.home}</td>
+              <td>${scoreInput}</td>
+              <td><img class="team-logo" src="${logos[match.away]}" />${match.away}</td>
+              <td>${action}</td>
+            </tr>
+          `;
+        });
+      }
+
+      checkKnockouts();
+    }
+
+    function submitScore(group, i) {
+      const homeScore = parseInt(document.getElementById(`home-${group}-${i}`).value);
+      const awayScore = parseInt(document.getElementById(`away-${group}-${i}`).value);
+      if (isNaN(homeScore) || isNaN(awayScore)) return alert("Enter valid scores.");
+
+      const match = fixtures[group][i];
+      match.result = { home: homeScore, away: awayScore };
+
+      const home = groupData[group][match.home];
+      const away = groupData[group][match.away];
+      home.played++; away.played++;
+
+      if (homeScore > awayScore) {
+        home.won++; home.points += 3; away.lost++;
+        home.form.push("W"); away.form.push("L");
+      } else if (homeScore < awayScore) {
+        away.won++; away.points += 3; home.lost++;
+        away.form.push("W"); home.form.push("L");
+      } else {
+        home.draw++; away.draw++; home.points++; away.points++;
+        home.form.push("D"); away.form.push("D");
+      }
+
+      updateAll();
+    }
+
+    // ----- Knockout Logic -----
+
+    let knockoutStarted = false;
+    function checkKnockouts() {
+      if (knockoutStarted) return;
+
+      let allDone = true;
+      for (const group of Object.keys(groups)) {
+        for (const match of fixtures[group]) {
+          if (!match.result) {
+            allDone = false;
+            break;
+          }
+        }
+      }
+
+      if (allDone) {
+        knockoutStarted = true;
+        startKnockouts();
+      }
+    }
+
+    function startKnockouts() {
+      const knockoutDiv = document.getElementById("knockout");
+      knockoutDiv.innerHTML = "";
+
+      const qualifiers = [];
+
+      for (const group of Object.keys(groups)) {
+        const sorted = Object.entries(groupData[group]).sort((a, b) => b[1].points - a[1].points);
+        qualifiers.push(sorted[0][0], sorted[1][0]); // top 2
+      }
+
+      // Shuffle for fairness
+      const shuffled = [...qualifiers].sort(() => Math.random() - 0.5);
+
+      const qf = [], sf = [], final = [];
+
+      // Quarterfinals
+      for (let i = 0; i < 8; i += 2) {
+        qf.push([shuffled[i], shuffled[i + 1]]);
+      }
+
+      knockoutDiv.innerHTML += `<h3>Quarterfinals</h3>`;
+      qf.forEach(([a, b], idx) => {
+        knockoutDiv.innerHTML += `
+          <div class="knockout-match">QF${idx + 1}: <img src="${logos[a]}" class="team-logo" />${a} vs <img src="${logos[b]}" class="team-logo" />${b}</div>
+        `;
+      });
+
+      knockoutDiv.innerHTML += `<h3>Semifinals</h3>`;
+      knockoutDiv.innerHTML += `<p>Winners of QF1 vs QF2 and QF3 vs QF4</p>`;
+
+      knockoutDiv.innerHTML += `<h3>Final</h3>`;
+      knockoutDiv.innerHTML += `<p>Winners of Semifinals</p>`;
+    }
+
+    renderGroups();
+  </script>
+</body>
+</html>
